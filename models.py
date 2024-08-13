@@ -1,14 +1,9 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    DECIMAL,
-    JSON,
     Boolean,
     Column,
-    Date,
     DateTime,
-    Enum,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -103,6 +98,7 @@ class MovieImageModel(Base):
     __tablename__ = "movie_images"
 
     id = Column(String(36), primary_key=True)
+    name = Column(String(60))
     path = Column(String(80))
     is_thumbnail = Column(Boolean, default=False)
     movie_id = Column(String(36), ForeignKey("movies.id"))

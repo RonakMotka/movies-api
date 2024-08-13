@@ -1,12 +1,11 @@
-import bcrypt
+import shutil
 
-from jwcrypto import jwk, jwt
-from sqlalchemy import inspect
-
+from os import remove
 from uuid import uuid4
 from datetime import datetime
 
-from config import config
+from fastapi import UploadFile
+from sqlalchemy import inspect
 
 
 def now():
@@ -17,14 +16,20 @@ def generate_id():
     id = str(uuid4())
     return id
 
+
 def object_as_dict(obj):
     return {c.key: getattr(obj, c.key) for c in inspect(obj).mapper.column_attrs}
 
 
-def create_password(password):
-    password = bytes(password, "utf-8")
-    password = bcrypt.hashpw(password, config["salt"])
-    password = password.decode("utf-8")
-    return password
+def save_file(file: UploadFile, name: str):
+    with open(name, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return name
 
+
+def remove_file(path):
+    try:
+        remove(path)
+    except Exception as e:
+        print(e)
 

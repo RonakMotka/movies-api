@@ -1,7 +1,9 @@
 
 from datetime import datetime
-from fastapi import APIRouter, Header, Response
+from genericpath import exists
+from fastapi import APIRouter, BackgroundTasks, File, Form, Header, Response, UploadFile
 from fastapi import HTTPException, status, Depends, Path, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -265,19 +267,168 @@ def delete_role(
 # End Roles
 
 
-@router.post(
+@router.get(
     "/movies",
+    response_model=schemas.MovieList,
+    tags=["Movies"]
+)
+def get_movies_list(
+    start: int = 0,
+    limit: int = 10,
+    search: str = Query("all", min_length=3, max_length=50),
+    sort_by: str = Query("all", min_length=3, max_length=20),
+    order: str = Query("all", min_length=3, max_length=5),
+    user_id: str = Query("all", min_length=3, max_length=36),
+    db: Session = Depends(get_db),
+):
+    data = movies.get_movie_list(db, start, limit, search, sort_by, order, user_id)
+    return data
+
+
+@router.post(
+    "/movies/details",
+    response_model=schemas.Movie,
     tags=["Movies"]
 )
 def add_movie(
-    user_id: str = Query(..., min_length=36, max_length=36),
+    movie: schemas.MovieAdd,
     db: Session = Depends(get_db),
     token: str = Header(None)
 ):
     db_user = users.verify_token(db, token)
     operations.verify_user_operation(db, db_user.id, "add movies")
-    data = movies.add_movie(db=db, user_id=user_id)
+    data = movies.add_movie_detail(db=db, user_id=db_user.id, movie=movie)
     return data
+
+
+@router.post(
+    "/movies/{movie_id}/upload",
+    status_code=status.HTTP_200_OK,
+    tags=["Movies"]
+)
+def upload_movie(
+    background_tasks: BackgroundTasks,
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    file: UploadFile = File(...),
+    token: str = Header(None),
+    db: Session = Depends(get_db),
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "add movies")
+    movies.get_movie(db=db, movie_id=movie_id)
+    background_tasks.add_task(movies.add_movie, file, movie_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+@router.post(
+    "/movies/{movie_id}/images",
+    status_code=status.HTTP_200_OK,
+    tags=["Movies"]
+)
+def add_movie_image(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    is_thumbnail: bool = Form(False),
+    file: UploadFile = File(...),
+    token: str = Header(None),
+    db: Session = Depends(get_db),
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "add movies")    
+    movies.add_movie_image(db, file, movie_id, is_thumbnail)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get(
+    "/movies/{movie_id}",
+    response_model=schemas.Movie,
+    tags=["Movies"]
+)
+def get_movie(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    db: Session = Depends(get_db)
+):
+    data = movies.get_movie(db, movie_id)
+    return data
+
+
+@router.get(
+    "/movies/{movie_id}/downloads",
+    response_model=schemas.MovieDownload,
+    tags=["Movies"]
+)
+def download_movie(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    db: Session = Depends(get_db)
+):
+    data = movies.download_movie(db, movie_id)
+    return data
+
+
+@router.put(
+    "/movies/{movie_id}",
+    response_model=schemas.Movie,
+    tags=["Movies"]
+)
+def update_movie_details(
+    movie: schemas.MovieAdd,
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    db: Session = Depends(get_db),
+    token: str = Header(None)
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "update movies")
+    data = movies.update_movie_details(db, movie_id, movie)
+    return data
+
+
+@router.put(
+    "/movies/{movie_id}/images/{image_id}",
+    response_model=schemas.MovieImage,
+    tags=["Movies"]
+)
+def update_movie_image(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    image_id: str = Path(..., min_length=36, max_length=36),
+    is_thumbnail: bool = Query(False),
+    db: Session = Depends(get_db),
+    token: str = Header(None)
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "update movies")
+    data = movies.update_movie_image(db, movie_id, image_id, is_thumbnail)
+    return data
+
+
+@router.delete(
+    "/movies/{movie_id}",
+    status_code=status.HTTP_200_OK,
+    tags=["Movies"]
+)
+def delete_movie(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    db: Session = Depends(get_db),
+    token: str = Header(None)
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "delete movies") 
+    movies.delete_movie(db, movie_id)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.delete(
+    "/movies/{movie_id}/images/{image_id}",
+    status_code=status.HTTP_200_OK,
+    tags=["Movies"]
+)
+def delete_movie_image(
+    movie_id: str = Path(..., min_length=36, max_length=36),
+    image_id: str = Path(..., min_length=36, max_length=36),
+    db: Session = Depends(get_db),
+    token: str = Header(None)
+):
+    db_user = users.verify_token(db, token)
+    operations.verify_user_operation(db, db_user.id, "delete movies") 
+    movies.delete_movie_images(db, movie_id, image_id)
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @router.get(
@@ -488,3 +639,17 @@ def delete_rating(
     operations.verify_user_operation(db, db_user.id, "delete ratings")
     ratings.delete_rating(db=db, movie_id=movie_id, rating_id=rating_id)
     return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get(
+    "/files",
+    tags=["Files"],
+)
+async def get_files(
+    f: str = Query(..., max_length=100),
+):
+    if f.startswith("uploads/") and exists(f):
+        data = FileResponse(f)
+    else:
+        data = FileResponse("uploads/default.png")
+    return data

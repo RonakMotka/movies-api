@@ -4,8 +4,6 @@ __pycache__
 .idea
 venv
 config.py
-reports/*
-!reports/__init__.py
 uploads/*
 !uploads/__init__.py
 !uploads/default.png
