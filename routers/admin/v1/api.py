@@ -30,7 +30,7 @@ def sign_in(user: schemas.UserLogin, db: Session = Depends(get_db)):
 @router.post(
     "/sign-up",
     response_model=schemas.UserLoginResponse,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     tags=["Users"],
 )
 def sign_up(
