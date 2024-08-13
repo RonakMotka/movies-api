@@ -157,17 +157,64 @@ class AdminUserUpdate(BaseModel):
     role_id: str = Field(min_length=36, max_length=36, description="Role Id")
 
 
-class Movie(BaseModel):
+class MovieImage(BaseModel):
     id: str
-    title: str
-    description: str
+    name: str
     path: str
-    year: int
-    user: User
+    is_thumbnail: bool
+    movie_id: str
 
     class Config:
         orm_mode = True
 
+
+class MovieAdd(BaseModel):
+    title: str = Field(..., min_length=2, max_length=70)
+    description: str
+    year: int
+
+
+class Movie(BaseModel):
+    id: str
+    title: str
+    description: str
+    year: int
+    user: User
+    images: List[MovieImage] = []
+
+    class Config:
+        orm_mode = True
+
+
+class MovieResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    year: int
+    user: User
+    thumbnail: Optional[MovieImage] = None
+
+    class Config:
+        orm_mode = True
+
+
+class MovieDownload(BaseModel):
+    id: str
+    title: str
+    description: str
+    path: str
+    year: str
+
+    class Config:
+        orm_mode = True
+
+
+class MovieList(BaseModel):
+    count: int
+    list: List[MovieResponse] = []
+
+    class Config:
+        orm_mode = True
 
 
 class CommentAdd(BaseModel):
